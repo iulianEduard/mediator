@@ -1,7 +1,9 @@
 ﻿using MediatR;
+using Microsoft.AspNetCore.Mvc;
 using System.Threading;
 using System.Threading.Tasks;
 using TransactionsProcessor.CFN.Application.Features;
+using TransactionsProcessor.CFN.Application.Models;
 
 namespace TransactionsProcessor.CFN.Application
 {
@@ -14,7 +16,7 @@ namespace TransactionsProcessor.CFN.Application
             _mediator = mediator;
         }
 
-        public async Task ImportFiles(CancellationToken cancellationToken)
+        public async Task<IActionResult> ImportFiles(CancellationToken cancellationToken)
         {
             var downloadFilesCommand = new DownloadFiles.Command
             {
@@ -22,6 +24,9 @@ namespace TransactionsProcessor.CFN.Application
             };
 
             var downloadedFilesResult = await _mediator.Send(downloadFilesCommand, cancellationToken);
+
+            var response = new OkResult();
+            return response;
         }
     }
 }

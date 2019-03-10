@@ -34,10 +34,18 @@ namespace TransactionsProcessor.CFN.Application.Features
                 var downloadLocation = await _mediator.Send(new FTPDownloadLocation.Query(request.ContentType), cancellationToken);
                 var ftpCredentials = await _mediator.Send(new FTPCredentials.Query(request.ContentType), cancellationToken);
 
-                var downloadedFiles = new List<string>()
+                var downloadRequest = new FTPDownload.Request
                 {
-                    @"C:\Temp\File1.csv"
+                    DownloadLocation = downloadLocation.DownloadLocation,
+                    IP = ftpCredentials.IP,
+                    Location = ftpCredentials.Location,
+                    TransferProtocol = ftpCredentials.TransferProtocol,
+                    UserName = ftpCredentials.UserName,
+                    UserPassword = ftpCredentials.UserPassword
                 };
+
+                var downloadResponse = await _mediator.Send(new FTPDownload.Command(downloadRequest), cancellationToken);
+                var downloadedFiles = downloadResponse.DownloadedFiles;
 
                 await Task.Run(() =>
                  {

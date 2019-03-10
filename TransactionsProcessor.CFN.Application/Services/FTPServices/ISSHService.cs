@@ -30,6 +30,8 @@ namespace TransactionsProcessor.CFN.Application.Services.FTPServices
     {
         public FTPOptions Options { get; set; }
 
+        public string DownloadLocation { get; set; }
+
         public List<string> FilesToDownloadList { get; set; }
 
         public List<string> FilesToExcludeList { get; set; }
