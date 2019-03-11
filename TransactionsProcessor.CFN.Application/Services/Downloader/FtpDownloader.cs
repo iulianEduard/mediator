@@ -1,10 +1,9 @@
-﻿using System;
-using System.IO;
+﻿using FluentFTP;
+using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Net;
-using System.Text;
 using System.Threading.Tasks;
-using TransactionsProcessor.CFN.Application.Services.Common;
-using TransactionsProcessor.Infrastructure.Helpers;
 
 namespace TransactionsProcessor.CFN.Application.Services.Downloader
 {
@@ -14,70 +13,76 @@ namespace TransactionsProcessor.CFN.Application.Services.Downloader
         {
             var credentials = downloadRequest.Options;
 
-            return await Task.Run(() =>
+            var client = new FtpClient(credentials.Host)
             {
-                var host = $"ftp://{credentials.Host}{credentials.Directory}";
-                var ftpRequest = SshUtils.CreateSSHRequest(host, false, WebRequestMethods.Ftp.ListDirectory, credentials);
-                var response = (FtpWebResponse)ftpRequest.GetResponse();
-                StreamReader srFiles = new StreamReader(response.GetResponseStream());
+                Credentials = new NetworkCredential(credentials.UserName, credentials.UserPassword)
+            };
 
-                string fileLines = srFiles.ReadLine();
-                var downloadResponse = new DownloadResponse();
+            await client.ConnectAsync();
 
-                while (fileLines != null)
-                {
-                    var fileName = Utils.GetFileNameFromFTP(fileLines);
-
-                    //if (await CheckIfFileExistsInDatabase(Path.Combine(downloadRequest.DownloadLocation, fileName)))
-                    //{
-                    //    fileLines = srFiles.ReadLine();
-                    //    continue;
-                    //}
-
-                    var fileLocation = DownloadFile(downloadRequest, credentials, fileName);
-                    var fileResponse = new DownloadResponseDetail
-                    {
-                        FileName = fileLocation,
-                        Error = "Success"
-                    };
-
-                    downloadResponse.Details.Add(fileResponse);
-
-                    fileLines = srFiles.ReadLine();
-                }
-
-                return downloadResponse;
-            });
-        }
-
-        private string DownloadFile(DownloadRequest request, DownloadSettings settings, string fileName)
-        {
-            var host = $"ftp://{settings.Host}{settings.Directory}/{fileName}";
-            var ftpRequest = SshUtils.CreateSSHRequest(host, false, WebRequestMethods.Ftp.DownloadFile, settings);
-            var response = (FtpWebResponse)ftpRequest.GetResponse();
-
-            Stream stream = null;
-            StreamReader reader = null;
-            StreamWriter writer = null;
-
-            Utils.ValidateFolderLocation(request.DownloadLocation);
-            var finalLocation = $@"{request.DownloadLocation}{fileName}";
-
-            stream = response.GetResponseStream();
-            using (reader = new StreamReader(stream, Encoding.UTF8))
+            var filesToDownload = await ProcessDownloadFromFtpRequest(client, downloadRequest);
+            var downloadResponse = new DownloadResponse
             {
-                writer = new StreamWriter(finalLocation, false);
+                Details = new List<DownloadResponseDetail>()
+            };
 
-                if (!reader.EndOfStream)
+            foreach(var fileToDownload in filesToDownload)
+            {
+                try
                 {
-                    writer.Write(reader.ReadToEnd());
-                }
+                    var fileName = fileToDownload.Name;
+                    var fileLocation = $@"{downloadRequest.DownloadLocation}{fileName}";
 
-                writer.Close();
-                stream.Close();
+                    await client.DownloadFileAsync(fileLocation, fileToDownload.FullName);
+
+                    downloadResponse.Details.Add(new DownloadResponseDetail { FileName = fileLocation, Error = "Success" });
+                }
+                catch(Exception ex)
+                {
+                    downloadResponse.Details.Add(new DownloadResponseDetail { FileName = fileToDownload.FullName, Error = ex.InnerException?.Message ?? ex.Message });
+                }
             }
 
-            return finalLocation;
+            await client.DisconnectAsync();
+
+            return downloadResponse;
+        }
+
+        private async Task<IEnumerable<FtpListItem>> ProcessDownloadFromFtpRequest(FtpClient client, DownloadRequest request)
+        {
+            if(request.FilesToDownload.Any())
+            {
+                var directoryListing = await client.GetListingAsync(request.Options.Directory);
+                var filesToDownload = directoryListing.Where(d => request.FilesToDownload.Any(r => d.FullName.ToLower().Contains(r)));
+
+                return filesToDownload;
+            }
+
+            if(request.FilesToExclude.Any())
+            {
+                var directoryListing = await client.GetListingAsync(request.Options.Directory);
+                var filesToDownload = directoryListing.Where(d => !request.FilesToExclude.Any(r => d.FullName.ToLower().Contains(r)));
+
+                return filesToDownload;
+            }
+
+            if(request.ExtensionsToDownload.Any())
+            {
+                var directoryListing = await client.GetListingAsync(request.Options.Directory);
+                var filesToDownload = directoryListing.Where(d => request.ExtensionsToDownload.Any(r => d.FullName.ToLower().Contains(r)));
+
+                return filesToDownload;
+            }
+
+            if(request.ExtenionsToExclude.Any())
+            {
+                var directoryListing = await client.GetListingAsync(request.Options.Directory);
+                var filesToDownload = directoryListing.Where(d => request.ExtenionsToExclude.Any(r => d.FullName.ToLower().Contains(r)));
+
+                return filesToDownload;
+            }
+
+            return await client.GetListingAsync(request.Options.Directory);
         }
     }
 }

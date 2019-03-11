@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using TransactionsProcessor.ApplicationFiles;
 using TransactionsProcessor.CFN.Application.Core;
 using TransactionsProcessor.CFN.Application.Services.Downloader;
 
@@ -13,20 +14,24 @@ namespace TransactionsProcessor.CFN.Application.Features
         public class Command : IRequest<Result>
         {
             public string ContentType { get; set; }
+
+            public string FileToDownload { get; set; }
         }
 
         public class Result
         {
-            public IEnumerable<string> DownloadedFiles { get; set; }
+            public Dictionary<int, string> DownloadedFiles { get; set; }
         }
 
         public class Handler : IRequestHandler<Command, Result>
         {
             private readonly ICfnDatabase _database;
+            private readonly IApplicationFilesService _applicationFilesService;
 
-            public Handler(ICfnDatabase database)
+            public Handler(ICfnDatabase database, IApplicationFilesService applicationFilesService)
             {
                 _database = database;
+                _applicationFilesService = applicationFilesService;
             }
 
             public async Task<Result> Handle(Command request, CancellationToken cancellationToken)
@@ -39,33 +44,41 @@ namespace TransactionsProcessor.CFN.Application.Features
                     DownloadLocation = downloadLocation,
                     Options = new Services.Downloader.DownloadSettings
                     {
-                        Host = ftpCredentials.IP,
+                        Host = ftpCredentials.Host,
                         Port = ftpCredentials.Port,
-                        Directory = ftpCredentials.Location,
-                        TransferProtocol = ftpCredentials.TransferProtocol,
+                        Directory = ftpCredentials.Directory,
                         UserName = ftpCredentials.UserName,
                         UserPassword = ftpCredentials.UserPassword
-                    }
+                    },
+                    FilesToDownload = new List<string> { request.FileToDownload }
                 };
 
                 var downloader = DownloaderFactory.GetByName(ftpCredentials.TransferProtocol);
+                var downloadResponse = await downloader.DownloadFilesAsync(downloadRequest);
 
-                var response = await downloader.DownloadFilesAsync(downloadRequest);
-
-                return new Result
+                var result = new Result
                 {
-                    DownloadedFiles = response.Details.Select(r => r.FileName)
+                    DownloadedFiles = new Dictionary<int, string>()
                 };
+
+                foreach(var file in downloadResponse.Details)
+                {
+                    var applicationFilesId = await _applicationFilesService.Insert(file.FileName, "CFN");
+
+                    result.DownloadedFiles.Add(applicationFilesId, file.FileName);
+                }
+
+                return result;
             }
         }
 
         public class DownloadSettings
         {
-            public string IP { get; set; }
+            public string Host { get; set; }
 
             public int Port { get; set; }
 
-            public string Location { get; set; }
+            public string Directory { get; set; }
 
             public string UserName { get; set; }
 

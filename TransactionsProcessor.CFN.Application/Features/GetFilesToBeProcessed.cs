@@ -15,6 +15,8 @@ namespace TransactionsProcessor.CFN.Application.Features
         public class Command : IRequest<Result>
         {
             public string ContentType { get; set; }
+
+            public List<string> FilesToDownload { get; set; }
         }
 
         public class Result

@@ -1,7 +1,11 @@
-﻿using System;
+﻿using FluentFTP;
+using System;
+using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Net;
 using System.Net.Security;
+using System.Security.Authentication;
 using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using System.Threading.Tasks;
@@ -16,88 +20,85 @@ namespace TransactionsProcessor.CFN.Application.Services.Downloader
         {
             var credentials = downloadRequest.Options;
 
-            return await Task.Run(() =>
+            var client = new FtpClient(credentials.Host)
             {
-                var host = $"ftp://{credentials.Host}{credentials.Directory}";
-                var ftpRequest = SshUtils.CreateSSHRequest(host, true, WebRequestMethods.Ftp.ListDirectory, credentials);
+                Credentials = new NetworkCredential(credentials.UserName, credentials.UserPassword),
+                EncryptionMode = FtpEncryptionMode.Explicit,
+                SslProtocols = SslProtocols.Tls
+            };
+            client.ValidateCertificate += new FtpSslValidation(OnValidateCertificate);
 
-                RemoteCertificateValidationCallback orgCallback = null;
-                orgCallback = ServicePointManager.ServerCertificateValidationCallback;
-                ServicePointManager.ServerCertificateValidationCallback = new RemoteCertificateValidationCallback(OnValidateCertificate);
-                ServicePointManager.Expect100Continue = true;
+            await client.ConnectAsync();
 
-                var response = (FtpWebResponse)ftpRequest.GetResponse();
-                StreamReader srFiles = new StreamReader(response.GetResponseStream());
-
-                string fileLines = srFiles.ReadLine();
-                var downloadResponse = new DownloadResponse();
-
-                while (fileLines != null)
-                {
-                    var fileName = Utils.GetFileNameFromFTP(fileLines);
-
-                    //if (await CheckIfFileExistsInDatabase(Path.Combine(downloadRequest.DownloadLocation, fileName)))
-                    //{
-                    //    fileLines = srFiles.ReadLine();
-                    //    continue;
-                    //}
-
-                    var fileLocation = DownloadFile(downloadRequest, credentials, fileName);
-                    var fileResponse = new DownloadResponseDetail
-                    {
-                        FileName = fileLocation,
-                        Error = "Success"
-                    };
-
-                    downloadResponse.Details.Add(fileResponse);
-
-                    fileLines = srFiles.ReadLine();
-                }
-
-                return downloadResponse;
-            });
-        }
-
-        private string DownloadFile(DownloadRequest request, DownloadSettings credentials, string fileName)
-        {
-            var host = $"ftp://{credentials.Host}{credentials.Directory}/{fileName}";
-            var ftpRequest = SshUtils.CreateSSHRequest(host, true, WebRequestMethods.Ftp.DownloadFile, credentials);
-
-            RemoteCertificateValidationCallback orgCallback = null;
-            orgCallback = ServicePointManager.ServerCertificateValidationCallback;
-            ServicePointManager.ServerCertificateValidationCallback = new RemoteCertificateValidationCallback(OnValidateCertificate);
-            ServicePointManager.Expect100Continue = true;
-
-            var response = (FtpWebResponse)ftpRequest.GetResponse();
-
-            Stream stream = null;
-            StreamReader reader = null;
-            StreamWriter writer = null;
-
-            Utils.ValidateFolderLocation(request.DownloadLocation);
-
-            var finalLocation = $@"{request.DownloadLocation}{fileName}";
-
-            stream = response.GetResponseStream();
-            using (reader = new StreamReader(stream, Encoding.UTF8))
+            var filesToDownload = await ProcessDownloadFromFtpRequest(client, downloadRequest);
+            var downloadResponse = new DownloadResponse
             {
-                writer = new StreamWriter(finalLocation, false);
+                Details = new List<DownloadResponseDetail>()
+            };
 
-                if (!reader.EndOfStream)
+            foreach (var fileToDownload in filesToDownload)
+            {
+                try
                 {
-                    writer.Write(reader.ReadToEnd());
-                }
+                    var fileName = fileToDownload.Name;
+                    var fileLocation = $@"{downloadRequest.DownloadLocation}{fileName}";
 
-                writer.Close();
-                stream.Close();
+                    await client.DownloadFileAsync(fileLocation, fileToDownload.FullName);
+
+                    downloadResponse.Details.Add(new DownloadResponseDetail { FileName = fileLocation, Error = "Success" });
+                }
+                catch (Exception ex)
+                {
+                    downloadResponse.Details.Add(new DownloadResponseDetail { FileName = fileToDownload.FullName, Error = ex.InnerException?.Message ?? ex.Message });
+                }
             }
 
-            return finalLocation;
+            await client.DisconnectAsync();
+
+            return downloadResponse;
         }
 
-        private bool OnValidateCertificate(object sender, X509Certificate certificate, X509Chain chain, SslPolicyErrors sslPolicyErrors)
+        private async Task<IEnumerable<FtpListItem>> ProcessDownloadFromFtpRequest(FtpClient client, DownloadRequest request)
         {
-            return true;
+            if (request.FilesToDownload.Any())
+            {
+                var directoryListing = await client.GetListingAsync(request.Options.Directory);
+                var filesToDownload = directoryListing.Where(d => request.FilesToDownload.Any(r => d.FullName.ToLower().Contains(r)));
+
+                return filesToDownload;
+            }
+
+            if (request.FilesToExclude.Any())
+            {
+                var directoryListing = await client.GetListingAsync(request.Options.Directory);
+                var filesToDownload = directoryListing.Where(d => !request.FilesToExclude.Any(r => d.FullName.ToLower().Contains(r)));
+
+                return filesToDownload;
+            }
+
+            if (request.ExtensionsToDownload.Any())
+            {
+                var directoryListing = await client.GetListingAsync(request.Options.Directory);
+                var filesToDownload = directoryListing.Where(d => request.ExtensionsToDownload.Any(r => d.FullName.ToLower().Contains(r)));
+
+                return filesToDownload;
+            }
+
+            if (request.ExtenionsToExclude.Any())
+            {
+                var directoryListing = await client.GetListingAsync(request.Options.Directory);
+                var filesToDownload = directoryListing.Where(d => request.ExtenionsToExclude.Any(r => d.FullName.ToLower().Contains(r)));
+
+                return filesToDownload;
+            }
+
+            return await client.GetListingAsync(request.Options.Directory);
+        }
+
+        private void OnValidateCertificate(FtpClient control, FtpSslValidationEventArgs e)
+        {
+            // add logic to test if certificate is valid here
+            e.Accept = true;
         }
     }
 }

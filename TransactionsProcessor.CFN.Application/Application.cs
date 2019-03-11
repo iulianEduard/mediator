@@ -50,12 +50,26 @@ namespace TransactionsProcessor.CFN.Application
 
         private async Task Process(FilesInProcess filesInProcess, CancellationToken cancellationToken)
         {
-            var downloadFilesCommand = new DownloadFiles.Command
+            var filesToDownloadCommand = new DownloadFiles.Command
             {
-                ContentType = "CFN"
+                ContentType = "CFN",
+                FileToDownload = filesInProcess.FileName 
             };
+            var downloadedFilesResult = await _mediator.Send(filesToDownloadCommand, cancellationToken);
 
-            var downloadedFilesResult = await _mediator.Send(downloadFilesCommand, cancellationToken);
+            var parseFileCommand = new ProcessFiles.Command
+            {
+                FullName = downloadedFilesResult.DownloadedFiles[0]
+            };
+            var parseFileResult = await _mediator.Send(parseFileCommand, cancellationToken);
+
+            var prepareTransactionsCommand = new PrepareTransactions.Command
+            {
+                CfnRecordsDictonary = parseFileResult.CfnRecordsDictonary
+            };
+            var prepareTransactionsResult = await _mediator.Send(prepareTransactionsCommand, cancellationToken);
+
+
         }
 
         private async Task PostProcess(CancellationToken cancellationToken)

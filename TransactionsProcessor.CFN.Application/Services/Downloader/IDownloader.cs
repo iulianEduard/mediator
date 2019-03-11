@@ -61,7 +61,5 @@ namespace TransactionsProcessor.CFN.Application.Services.Downloader
         public string UserName { get; set; }
 
         public string UserPassword { get; set; }
-
-        public string TransferProtocol { get; set; }
     }
 }

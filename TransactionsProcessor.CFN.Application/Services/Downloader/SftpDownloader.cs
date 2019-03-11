@@ -20,32 +20,17 @@ namespace TransactionsProcessor.CFN.Application.Services.Downloader
             {
                 client.Connect();
 
-                IEnumerable<SftpFile> files = null;
-
-                if (!string.IsNullOrEmpty(credentials.Directory))
-                {
-                    files = await client.ListDirectoryAsync(credentials.Directory);
-                }
-
-                if (downloadRequest.FilesToDownload.Any())
-                {
-                    files = GetRequestedFiles(downloadRequest, files);
-                }
-
                 Utils.ValidateFolderLocation(downloadRequest.DownloadLocation);
 
                 var downloadResponse = new DownloadResponse();
 
-                foreach (var file in files)
+                var filesToDownload = await ProcessDownloadFromFtpRequest(client, downloadRequest);
+
+                foreach (var file in filesToDownload)
                 {
                     try
                     {
                         var fileLocation = Path.Combine(downloadRequest.DownloadLocation, file.Name);
-
-                        //if (await CheckIfFileExistsInDatabase(fileLocation))
-                        //{
-                        //    continue;
-                        //}
 
                         using (Stream fileStream = File.OpenWrite(fileLocation))
                         {
@@ -55,22 +40,51 @@ namespace TransactionsProcessor.CFN.Application.Services.Downloader
                     }
                     catch (Exception ex)
                     {
-                        var errorMessage = ex.InnerException != null ? ex.InnerException.Message : ex.Message;
-                        downloadResponse.Details.Add(new DownloadResponseDetail { FileName = file.Name, Error = errorMessage });
+                        downloadResponse.Details.Add(new DownloadResponseDetail { FileName = file.Name, Error = ex.InnerException?.Message ?? ex.Message });
                     }
                 }
+
+                client.Disconnect();
 
                 return downloadResponse;
             }
         }
 
-        private IEnumerable<SftpFile> GetRequestedFiles(DownloadRequest request, IEnumerable<SftpFile> files)
+        private async Task<IEnumerable<SftpFile>> ProcessDownloadFromFtpRequest(SftpClient client, DownloadRequest request)
         {
-            IEnumerable<SftpFile> requestedFiles = null;
+            if (request.FilesToDownload.Any())
+            {
+                var directoryListing = await client.ListDirectoryAsync(request.Options.Directory);
+                var filesToDownload = directoryListing.Where(d => request.FilesToDownload.Any(r => d.FullName.ToLower().Contains(r)));
 
-            requestedFiles = files.Where(f => request.FilesToDownload.Contains(f.FullName)).ToList();
+                return filesToDownload;
+            }
 
-            return requestedFiles;
+            if (request.FilesToExclude.Any())
+            {
+                var directoryListing = await client.ListDirectoryAsync(request.Options.Directory);
+                var filesToDownload = directoryListing.Where(d => !request.FilesToExclude.Any(r => d.FullName.ToLower().Contains(r)));
+
+                return filesToDownload;
+            }
+
+            if (request.ExtensionsToDownload.Any())
+            {
+                var directoryListing = await client.ListDirectoryAsync(request.Options.Directory);
+                var filesToDownload = directoryListing.Where(d => request.ExtensionsToDownload.Any(r => d.FullName.ToLower().Contains(r)));
+
+                return filesToDownload;
+            }
+
+            if (request.ExtenionsToExclude.Any())
+            {
+                var directoryListing = await client.ListDirectoryAsync(request.Options.Directory);
+                var filesToDownload = directoryListing.Where(d => request.ExtenionsToExclude.Any(r => d.FullName.ToLower().Contains(r)));
+
+                return filesToDownload;
+            }
+
+            return await client.ListDirectoryAsync(request.Options.Directory);
         }
     }
 }
