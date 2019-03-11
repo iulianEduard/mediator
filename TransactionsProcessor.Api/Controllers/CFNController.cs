@@ -16,6 +16,6 @@ namespace TransactionsProcessor.Api.Controllers
         }
 
         [HttpPost]
-        public async Task<IActionResult> CFN(CancellationToken cancellationToken) => await _application.ImportFiles(cancellationToken);
+        public async Task CFN(CancellationToken cancellationToken) => await _application.ImportFiles(cancellationToken);
     }
 }

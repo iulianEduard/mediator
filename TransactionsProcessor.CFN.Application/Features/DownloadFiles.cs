@@ -1,8 +1,10 @@
 ﻿using MediatR;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using TransactionsProcessor.CFN.Application.Features.FTP;
+using TransactionsProcessor.CFN.Application.Core;
+using TransactionsProcessor.CFN.Application.Services.Downloader;
 
 namespace TransactionsProcessor.CFN.Application.Features
 {
@@ -15,48 +17,61 @@ namespace TransactionsProcessor.CFN.Application.Features
 
         public class Result
         {
-            public List<string> DownloadedFiles { get; set; }
+            public IEnumerable<string> DownloadedFiles { get; set; }
         }
 
-        public class DownloadFilesCommand : IRequestHandler<Command, Result>
+        public class Handler : IRequestHandler<Command, Result>
         {
-            private readonly IMediator _mediator;
+            private readonly ICfnDatabase _database;
 
-            public DownloadFilesCommand(IMediator mediator)
+            public Handler(ICfnDatabase database)
             {
-                _mediator = mediator;
+                _database = database;
             }
 
             public async Task<Result> Handle(Command request, CancellationToken cancellationToken)
             {
-                var result = new Result();
+                var downloadLocation = await _database.QuerySingle<string>("", new { request.ContentType }); 
+                var ftpCredentials = await _database.QuerySingle<DownloadSettings>("", new { request.ContentType });
 
-                var downloadLocation = await _mediator.Send(new FTPDownloadLocation.Query(request.ContentType), cancellationToken);
-                var ftpCredentials = await _mediator.Send(new FTPCredentials.Query(request.ContentType), cancellationToken);
-
-                var downloadRequest = new FTPDownload.Request
+                var downloadRequest = new DownloadRequest
                 {
-                    DownloadLocation = downloadLocation.DownloadLocation,
-                    IP = ftpCredentials.IP,
-                    Location = ftpCredentials.Location,
-                    TransferProtocol = ftpCredentials.TransferProtocol,
-                    UserName = ftpCredentials.UserName,
-                    UserPassword = ftpCredentials.UserPassword
+                    DownloadLocation = downloadLocation,
+                    Options = new Services.Downloader.DownloadSettings
+                    {
+                        Host = ftpCredentials.IP,
+                        Port = ftpCredentials.Port,
+                        Directory = ftpCredentials.Location,
+                        TransferProtocol = ftpCredentials.TransferProtocol,
+                        UserName = ftpCredentials.UserName,
+                        UserPassword = ftpCredentials.UserPassword
+                    }
                 };
 
-                var downloadResponse = await _mediator.Send(new FTPDownload.Command(downloadRequest), cancellationToken);
-                var downloadedFiles = downloadResponse.DownloadedFiles;
+                var downloader = DownloaderFactory.GetByName(ftpCredentials.TransferProtocol);
 
-                await Task.Run(() =>
-                 {
-                     result = new Result
-                     {
-                         DownloadedFiles = downloadedFiles
-                     };
-                 });
+                var response = await downloader.DownloadFilesAsync(downloadRequest);
 
-                return result;
+                return new Result
+                {
+                    DownloadedFiles = response.Details.Select(r => r.FileName)
+                };
             }
+        }
+
+        public class DownloadSettings
+        {
+            public string IP { get; set; }
+
+            public int Port { get; set; }
+
+            public string Location { get; set; }
+
+            public string UserName { get; set; }
+
+            public string UserPassword { get; set; }
+
+            public string TransferProtocol { get; set; }
         }
     }
 }
