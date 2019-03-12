@@ -6,18 +6,18 @@ using TransactionsProcessor.CFN.Application.Models;
 
 namespace TransactionsProcessor.CFN.Application.Features
 {
-    public class ImportTransactions
+    public class Commit
     {
         public class Command : IRequest<Result>
         {
-            public Dictionary<int, CfnFileModel> CfnFileDictionary { get; set; }
+            public Dictionary<int, ParseModel> CfnFileDictionary { get; set; }
 
-            public Dictionary<int, CfnBillingModel> BillingDictionary { get; set; }
+            public Dictionary<int, BillingModel> BillingDictionary { get; set; }
         }
 
         public class Result
         {
-            public Dictionary<int, CfnFileModel> BillingDictionary { get; set; }
+            public Dictionary<int, ParseModel> BillingDictionary { get; set; }
 
             public List<int> TransactionIdsForRollback { get; set; }
         }
@@ -42,7 +42,7 @@ namespace TransactionsProcessor.CFN.Application.Features
                 return new BillingResponse();
             }
 
-            private List<int> ReconcileInsertedTransactions(Dictionary<int, CfnFileModel> cfnFileDictionary, Dictionary<int, int> insertedTransactionsDictionary)
+            private List<int> ReconcileInsertedTransactions(Dictionary<int, ParseModel> cfnFileDictionary, Dictionary<int, int> insertedTransactionsDictionary)
             {
                 var fallbackForInsertedTransactions = new List<int>();
 

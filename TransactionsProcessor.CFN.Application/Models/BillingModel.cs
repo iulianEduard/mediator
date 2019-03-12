@@ -3,7 +3,7 @@ using System.Collections.Generic;
 
 namespace TransactionsProcessor.CFN.Application.Models
 {
-    public class CfnBillingModel
+    public class BillingModel
     {
         public int DeliveryId { get; set; }
 

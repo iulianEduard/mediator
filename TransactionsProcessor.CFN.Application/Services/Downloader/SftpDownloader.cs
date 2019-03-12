@@ -24,23 +24,23 @@ namespace TransactionsProcessor.CFN.Application.Services.Downloader
 
                 var downloadResponse = new DownloadResponse();
 
-                var filesToDownload = await ProcessDownloadFromFtpRequest(client, downloadRequest);
-
-                foreach (var file in filesToDownload)
+                foreach (var file in downloadRequest.FilesToDownload)
                 {
+                    var fileName = Utils.GetFileNameFromFTP(file);
+
                     try
                     {
-                        var fileLocation = Path.Combine(downloadRequest.DownloadLocation, file.Name);
+                        var fileLocation = Path.Combine(downloadRequest.DownloadLocation, fileName);
 
                         using (Stream fileStream = File.OpenWrite(fileLocation))
                         {
-                            await client.DownloadAsync(file.FullName, fileStream);
-                            downloadResponse.Details.Add(new DownloadResponseDetail { FileName = file.Name, Error = "Success" });
+                            await client.DownloadAsync(file, fileStream);
+                            downloadResponse.Details.Add(new DownloadResponseDetail { FileName = fileName, Error = "Success" });
                         }
                     }
                     catch (Exception ex)
                     {
-                        downloadResponse.Details.Add(new DownloadResponseDetail { FileName = file.Name, Error = ex.InnerException?.Message ?? ex.Message });
+                        downloadResponse.Details.Add(new DownloadResponseDetail { FileName = fileName, Error = ex.InnerException?.Message ?? ex.Message });
                     }
                 }
 
@@ -48,43 +48,6 @@ namespace TransactionsProcessor.CFN.Application.Services.Downloader
 
                 return downloadResponse;
             }
-        }
-
-        private async Task<IEnumerable<SftpFile>> ProcessDownloadFromFtpRequest(SftpClient client, DownloadRequest request)
-        {
-            if (request.FilesToDownload.Any())
-            {
-                var directoryListing = await client.ListDirectoryAsync(request.Options.Directory);
-                var filesToDownload = directoryListing.Where(d => request.FilesToDownload.Any(r => d.FullName.ToLower().Contains(r)));
-
-                return filesToDownload;
-            }
-
-            if (request.FilesToExclude.Any())
-            {
-                var directoryListing = await client.ListDirectoryAsync(request.Options.Directory);
-                var filesToDownload = directoryListing.Where(d => !request.FilesToExclude.Any(r => d.FullName.ToLower().Contains(r)));
-
-                return filesToDownload;
-            }
-
-            if (request.ExtensionsToDownload.Any())
-            {
-                var directoryListing = await client.ListDirectoryAsync(request.Options.Directory);
-                var filesToDownload = directoryListing.Where(d => request.ExtensionsToDownload.Any(r => d.FullName.ToLower().Contains(r)));
-
-                return filesToDownload;
-            }
-
-            if (request.ExtenionsToExclude.Any())
-            {
-                var directoryListing = await client.ListDirectoryAsync(request.Options.Directory);
-                var filesToDownload = directoryListing.Where(d => request.ExtenionsToExclude.Any(r => d.FullName.ToLower().Contains(r)));
-
-                return filesToDownload;
-            }
-
-            return await client.ListDirectoryAsync(request.Options.Directory);
         }
     }
 }

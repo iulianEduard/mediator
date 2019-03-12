@@ -9,18 +9,18 @@ using TransactionsProcessor.CFN.Application.Models;
 
 namespace TransactionsProcessor.CFN.Application.Features
 {
-    public class PrepareTransactions
+    public class Transform
     {
         public class Command : IRequest<Result>
         {
-            public Dictionary<int, CfnFileModel> CfnRecordsDictonary { get; set; }
+            public List<ParseModel> ParseTransactions { get; set; }
         }
 
         public class Result
         {
-            public Dictionary<int, CfnFileModel> CfnRecordsDictionary { get; set; }
+            public List<ParseModel> ParseTransactions { get; set; }
 
-            public Dictionary<int, CfnBillingModel> CfnBillingRecordsDictonary { get; set; }
+            public List<BillingModel> BillingTransactions { get; set; }
         }
 
         public class Handler : IRequestHandler<Command, Result>
@@ -36,18 +36,18 @@ namespace TransactionsProcessor.CFN.Application.Features
             {
                 await SetCustomerCardNames(request);
 
-                var billingDictionary = PrepareData(request.CfnRecordsDictonary);
+                var billingRequestDto = PrepareData(request);
 
-                await SetDDFuelTypes(billingDictionary);
+                await SetDDFuelTypes(billingRequestDto);
 
-                await SetBatchConfiguration(billingDictionary);
+                await SetBatchConfiguration(billingRequestDto);
 
-                await SetCustomerDetails(billingDictionary);
+                await SetCustomerDetails(billingRequestDto);
 
                 return new Result
                 {
-                    CfnRecordsDictionary = request.CfnRecordsDictonary,
-                    CfnBillingRecordsDictonary = billingDictionary
+                    ParseTransactions = request.ParseTransactions,
+                    BillingTransactions = billingRequestDto
                 };
             }
 
@@ -55,90 +55,89 @@ namespace TransactionsProcessor.CFN.Application.Features
             {
                 var customerCards = await _cfnDatabase.Query<CFNCustomer>("cfn.usp_GetCustomerCards");
 
-                foreach (var cfnRecord in command.CfnRecordsDictonary.Values)
+                foreach (var cfnRecord in command.ParseTransactions)
                 {
                     var nameOnCard = customerCards.Where(cc => cc.CardId == cfnRecord.CardId.ToString()).Select(cc => cc.NameOnCard).FirstOrDefault();
                     cfnRecord.NameOnCard = string.IsNullOrWhiteSpace(nameOnCard) ? "Not found" : nameOnCard;
                 }
             }
 
-            private Dictionary<int, CfnBillingModel> PrepareData(Dictionary<int, CfnFileModel> cfnRecords)
+            private List<BillingModel> PrepareData(Command command)
             {
-                var billingDictionary = new Dictionary<int, CfnBillingModel>();
+                var billingModel = new List<BillingModel>();
+                var records = command.ParseTransactions;
 
-                foreach (var cfnRecordPair in cfnRecords)
+                foreach (var recordItem in records)
                 {
-                    var cfnRecord = cfnRecordPair.Value;
-
                     var fleetTransList = new List<FleetTrans>
-                {
-                    new FleetTrans
                     {
-                        FleetId = 0,
-                        DeliveryId = 0,
-                        Asset = string.IsNullOrWhiteSpace(cfnRecord.VehicleIdentifier) ? "Truck" : cfnRecord.VehicleIdentifier,
-                        AssetData = cfnRecord.Odometer,
-                        Gallons = cfnRecord.Quantity
-                    }
-                };
+                        new FleetTrans
+                        {
+                            FleetId = 0,
+                            DeliveryId = 0,
+                            Asset = string.IsNullOrWhiteSpace(recordItem.VehicleIdentifier) ? "Truck" : recordItem.VehicleIdentifier,
+                            AssetData = recordItem.Odometer,
+                            Gallons = recordItem.Quantity
+                        }
+                    };
 
-                    var deliveryDate = cfnRecord.DateCompleted.ToDateTime();
+                    var deliveryDate = recordItem.DateCompleted.ToDateTime();
 
-                    var deliveryTransItem = new CfnBillingModel
+                    var deliveryTransItem = new BillingModel
                     {
                         DeliveryId = 0,
-                        BatchNumber = cfnRecord.SiteIdNumber,
-                        Gallons = cfnRecord.Quantity,
-                        ProductCode = cfnRecord.ProductCode,
-                        TicketNumber = cfnRecord.TransactionNumber,
+                        BatchNumber = recordItem.SiteIdNumber,
+                        Gallons = recordItem.Quantity,
+                        ProductCode = recordItem.ProductCode,
+                        TicketNumber = recordItem.TransactionNumber,
                         DeliveryDate = deliveryDate,
-                        DeliveryEndTime = cfnRecord.TimeCompleted.ToDateTime(deliveryDate),
-                        PONumber = string.IsNullOrEmpty(cfnRecord.POInvoiceNumber) ? null : cfnRecord.POInvoiceNumber,
+                        DeliveryEndTime = recordItem.TimeCompleted.ToDateTime(deliveryDate),
+                        PONumber = string.IsNullOrEmpty(recordItem.POInvoiceNumber) ? null : recordItem.POInvoiceNumber,
                         FleetTransList = fleetTransList,
-                        SiteId = cfnRecord.SiteIdNumber,
-                        CardId = cfnRecord.CardId.ToString(),
-                        TransactionType = cfnRecord.TransactionLocationIndicator,
+                        SiteId = recordItem.SiteIdNumber,
+                        CardId = recordItem.CardId.ToString(),
+                        TransactionType = recordItem.TransactionLocationIndicator,
                         DeliveryTransPricingItem = new DeliveryTransPricing
                         {
                             Id = 0,
                             DeliveryId = 0,
-                            BrokerCost = cfnRecord.PumpPrice,
-                            BrokerFee = cfnRecord.HaulRate,
-                            InvoicePrice = cfnRecord.Price,
-                            OriginalPrice = cfnRecord.CFNPrice
+                            BrokerCost = recordItem.PumpPrice,
+                            BrokerFee = recordItem.HaulRate,
+                            InvoicePrice = recordItem.Price,
+                            OriginalPrice = recordItem.CFNPrice
                         }
                     };
 
-                    billingDictionary.Add(cfnRecordPair.Key, deliveryTransItem);
+                    billingModel.Add(deliveryTransItem);
                 }
 
-                return billingDictionary;
+                return billingModel;
             }
 
-            private async Task SetDDFuelTypes(Dictionary<int, CfnBillingModel> cfnBillingDictionary)
+            private async Task SetDDFuelTypes(List<BillingModel> billingRequestModel)
             {
                 var cfnFuelTypes = await _cfnDatabase.Query<CFNFuelType>("cfn.usp_GetFuelTypes");
 
-                foreach (var deliveryTrans in cfnBillingDictionary.Values)
+                foreach (var billingItem in billingRequestModel)
                 {
-                    var fuelAssociation = cfnFuelTypes.Where(cfn => cfn.CFNProductCode == deliveryTrans.ProductCode).FirstOrDefault();
+                    var fuelAssociation = cfnFuelTypes.Where(cfn => cfn.CFNProductCode == billingItem.ProductCode).FirstOrDefault();
 
                     if (fuelAssociation == null)
                     {
                         fuelAssociation = new CFNFuelType { FuelTypeId = 100 };
                     }
 
-                    deliveryTrans.ProductCode = fuelAssociation.FuelTypeId;
+                    billingItem.ProductCode = fuelAssociation.FuelTypeId;
                 }
             }
 
-            private async Task SetBatchConfiguration(Dictionary<int, CfnBillingModel> cfnBillingDictionary)
+            private async Task SetBatchConfiguration(List<BillingModel> billingRequestModel)
             {
                 var batchConfigurations = await _cfnDatabase.Query<CFNBatchConfiguration>("cfn.usp_GetSystemStatusForCFNCustomers");
 
                 foreach (var batchConfiguration in batchConfigurations)
                 {
-                    var groupedDeliveriesBySite = cfnBillingDictionary.Values.Where(cfn => cfn.SiteId == batchConfiguration.SiteId && batchConfiguration.DieselOwned == true).ToList();
+                    var groupedDeliveriesBySite = billingRequestModel.Where(cfn => cfn.SiteId == batchConfiguration.SiteId && batchConfiguration.DieselOwned == true).ToList();
 
                     foreach (var groupedDelivery in groupedDeliveriesBySite)
                     {
@@ -148,7 +147,7 @@ namespace TransactionsProcessor.CFN.Application.Features
                     }
                 }
 
-                var unknownSitesInFile = cfnBillingDictionary.Values.Where(cfn => !batchConfigurations.Any(bc => bc.SiteId == cfn.SiteId));
+                var unknownSitesInFile = billingRequestModel.Where(cfn => !batchConfigurations.Any(bc => bc.SiteId == cfn.SiteId));
                 var foreignBatch = batchConfigurations.Where(bc => bc.SiteId == 0).FirstOrDefault();
 
                 foreach (var unknownSite in unknownSitesInFile)
@@ -159,7 +158,7 @@ namespace TransactionsProcessor.CFN.Application.Features
                     unknownSite.BatchNumber = -666;
                 }
 
-                var notDieselSitesInFile = cfnBillingDictionary.Values.Where(cfn => batchConfigurations.Any(bc => bc.SiteId == cfn.SiteId && (bc.DieselOwned == false || bc.DieselOwned == null)));
+                var notDieselSitesInFile = billingRequestModel.Where(cfn => batchConfigurations.Any(bc => bc.SiteId == cfn.SiteId && (bc.DieselOwned == false || bc.DieselOwned == null)));
 
                 foreach (var notDieselSite in notDieselSitesInFile)
                 {
@@ -170,12 +169,12 @@ namespace TransactionsProcessor.CFN.Application.Features
                 }
             }
 
-            private async Task SetCustomerDetails(Dictionary<int, CfnBillingModel> cfnBillingDictionary)
+            private async Task SetCustomerDetails(List<BillingModel> billingRequestModel)
             {
                 var customerCards = await _cfnDatabase.Query<CFNCustomer>("cfn.usp_GetCustomerCards");
                 var customerMissingIds = await _cfnDatabase.QuerySingle<CFNCustomerType>("cfn.usp_GetSystemStatusForCFNCustomers", new { CFNForeign = "CFNForeignCustomer", CFNUnknown = "CFNUnknownCustomer" });
 
-                foreach (var deliveryTransCFN in cfnBillingDictionary.Values)
+                foreach (var deliveryTransCFN in billingRequestModel)
                 {
                     var customerId = customerCards.Where(cc => cc.CardId == deliveryTransCFN.CardId).Select(cc => cc.CustomerId).FirstOrDefault();
 

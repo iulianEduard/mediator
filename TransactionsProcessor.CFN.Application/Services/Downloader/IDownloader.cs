@@ -16,14 +16,6 @@ namespace TransactionsProcessor.CFN.Application.Services.Downloader
         public string DownloadLocation { get; set; }
 
         public List<string> FilesToDownload { get; set; }
-
-        public List<string> FilesToExclude { get; set; }
-
-        public List<string> ExtensionsToDownload { get; set; }
-
-        public List<string> ExtenionsToExclude { get; set; }
-
-        public bool DeleteFilesAfterDownload { get; set; }
     }
 
     public class DownloadResponse

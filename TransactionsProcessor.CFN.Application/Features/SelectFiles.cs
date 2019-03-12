@@ -10,7 +10,7 @@ using TransactionsProcessor.CFN.Application.Services.RemoteFileChecker;
 
 namespace TransactionsProcessor.CFN.Application.Features
 {
-    public class GetFilesToBeProcessed
+    public class SelectFiles
     {
         public class Command : IRequest<Result>
         {
@@ -42,12 +42,15 @@ namespace TransactionsProcessor.CFN.Application.Features
 
             public async Task<Result> Handle(Command request, CancellationToken cancellationToken)
             {
-                var downloadLocation = await _cfnDatabase.QuerySingle<string>("", new { request.ContentType });
                 var ftpCredentials = await _cfnDatabase.QuerySingle<Credentials>("", new { request.ContentType });
 
                 var remoteFileChecker = RemoteFileCheckerFactory.GetByName(ftpCredentials.TransferProtocol);
 
-                var remoteFileCheckerCredentials = new RemoteFileCheckerCredentials
+                var remoteFileRequest = new RemoteFileRequest
+                {
+                };
+
+                var remoteFileCheckerCredentials = new RemoteFileCredentials
                 {
                     Host = ftpCredentials.Host,
                     Directory = ftpCredentials.Directory,
@@ -56,10 +59,11 @@ namespace TransactionsProcessor.CFN.Application.Features
                     UserPassword = ftpCredentials.UserPassword
                 };
 
-                var remoteFiles = await remoteFileChecker.GetRemoteFiles(remoteFileCheckerCredentials);
+                var remoteFiles = await remoteFileChecker.GetRemoteFiles(remoteFileRequest);
 
                 var filesToBeProcessed = new Result();
 
+                // TODO: send list of files to check instead of one by one
                 foreach(var remoteFile in remoteFiles)
                 {
                     if(!await _applicationFilesService.CheckIfFileExists(remoteFile.FileName))

@@ -1,6 +1,8 @@
-﻿namespace TransactionsProcessor.CFN.Application.Models
+﻿using System;
+
+namespace TransactionsProcessor.CFN.Application.Models
 {
-    public class CfnFileModel
+    public class ParseModel
     {
         public int SiteIdNumber { get; set; }
 
@@ -115,5 +117,7 @@
         public string NameOnCard { get; set; }
 
         public int DeliveryId { get; set; }
+
+        public Guid TransactionUID { get; set; }
     }
 }

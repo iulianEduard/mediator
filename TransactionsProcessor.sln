@@ -11,9 +11,13 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "TransactionsProcessor.CFN.A
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "TransactionsProcessor.Infrastructure", "TransactionsProcessor.Infrastructure\TransactionsProcessor.Infrastructure.csproj", "{8B634869-64B3-4669-9111-114883B44914}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TransactionsProcessor.Data", "TransactionsProcessor.Data\TransactionsProcessor.Data.csproj", "{DCC3B6A9-867F-4A40-A512-12BC5EFEB100}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "TransactionsProcessor.Data", "TransactionsProcessor.Data\TransactionsProcessor.Data.csproj", "{DCC3B6A9-867F-4A40-A512-12BC5EFEB100}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TransactionsProcessor.ApplicationFiles", "TransactionsProcessor.ApplicationFiles\TransactionsProcessor.ApplicationFiles.csproj", "{26A8696D-F7E3-4E09-9971-3D04BC8284F8}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "TransactionsProcessor.ApplicationFiles", "TransactionsProcessor.ApplicationFiles\TransactionsProcessor.ApplicationFiles.csproj", "{26A8696D-F7E3-4E09-9971-3D04BC8284F8}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Core", "Core", "{02DC1C53-93E9-483E-BBAD-508A7E3763AA}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TransactionsProcessor.FileManager", "TransactionsProcessor.FileManager\TransactionsProcessor.FileManager.csproj", "{D0CE67AD-105E-41F5-983A-7BEFA0468F4D}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -41,12 +45,17 @@ Global
 		{26A8696D-F7E3-4E09-9971-3D04BC8284F8}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{26A8696D-F7E3-4E09-9971-3D04BC8284F8}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{26A8696D-F7E3-4E09-9971-3D04BC8284F8}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D0CE67AD-105E-41F5-983A-7BEFA0468F4D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D0CE67AD-105E-41F5-983A-7BEFA0468F4D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D0CE67AD-105E-41F5-983A-7BEFA0468F4D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D0CE67AD-105E-41F5-983A-7BEFA0468F4D}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{3818643A-462B-4004-AB31-1F0309D01B96} = {7346E7DE-E9A5-47D9-A81E-A151EF230009}
+		{D0CE67AD-105E-41F5-983A-7BEFA0468F4D} = {02DC1C53-93E9-483E-BBAD-508A7E3763AA}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {102DA34B-0E6E-4AFA-95EF-05EA3B990F70}

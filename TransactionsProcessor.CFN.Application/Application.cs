@@ -31,12 +31,10 @@ namespace TransactionsProcessor.CFN.Application
 
         private async Task<List<FilesInProcess>> PreProcess(CancellationToken cancellationToken)
         {
-            var filesToBeProcessedCommand = new GetFilesToBeProcessed.Command
-            {
-                ContentType = "CFN"
-            };
-
-            var filesToBeProcessedResult = await _mediator.Send(filesToBeProcessedCommand, cancellationToken);
+            var filesToBeProcessedResult = await _mediator.Send(new SelectFiles.Command
+                {
+                    ContentType = "CFN"
+                }, cancellationToken);
 
             var filesToBeProcessed = new List<FilesInProcess>();
 
@@ -50,26 +48,22 @@ namespace TransactionsProcessor.CFN.Application
 
         private async Task Process(FilesInProcess filesInProcess, CancellationToken cancellationToken)
         {
-            var filesToDownloadCommand = new DownloadFiles.Command
-            {
-                ContentType = "CFN",
-                FileToDownload = filesInProcess.FileName 
-            };
-            var downloadedFilesResult = await _mediator.Send(filesToDownloadCommand, cancellationToken);
+            var downloadedFilesResult = await _mediator.Send(new DownloadFiles.Command
+                {
+                    ContentType = "CFN",
+                    FileToDownload = filesInProcess.FileName
+                }, cancellationToken);
 
-            var parseFileCommand = new ProcessFiles.Command
-            {
-                FullName = downloadedFilesResult.DownloadedFiles[0]
-            };
-            var parseFileResult = await _mediator.Send(parseFileCommand, cancellationToken);
+            var parseResult = await _mediator.Send(new ParseData.Command
+                {
+                    FullName = downloadedFilesResult.DownloadedFiles[0]
+                }, 
+                cancellationToken);
 
-            var prepareTransactionsCommand = new PrepareTransactions.Command
-            {
-                CfnRecordsDictonary = parseFileResult.CfnRecordsDictonary
-            };
-            var prepareTransactionsResult = await _mediator.Send(prepareTransactionsCommand, cancellationToken);
-
-
+            var transformResult = await _mediator.Send(new Transform.Command
+                {
+                    ParseTransactions = parseResult.Transactions
+                }, cancellationToken);
         }
 
         private async Task PostProcess(CancellationToken cancellationToken)
