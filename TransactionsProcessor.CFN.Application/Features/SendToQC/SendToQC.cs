@@ -1,34 +1,24 @@
 ﻿using MediatR;
 using System;
 using System.Collections.Generic;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using TransactionsProcessor.CFN.Application.Models;
 
-namespace TransactionsProcessor.CFN.Application.Features
+namespace TransactionsProcessor.CFN.Application.Features.SendToQC
 {
-    public class Export
+    public partial class SendToQC
     {
         public class Command : IRequest<Result>
         {
-            public string ContentType { get; set; }
-
-            public Dictionary<int, ParseModel> CfnFileDictionary { get; set; }
+            public List<SendToQC.BatchInfo> BatchInfo { get; set; }
         }
 
         public class Result
         {
-
         }
 
         public class Handler : IRequestHandler<Command, Result>
         {
-            public Handler()
-            {
-
-            }
-
             public Task<Result> Handle(Command request, CancellationToken cancellationToken)
             {
                 throw new NotImplementedException();

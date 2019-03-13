@@ -1,7 +1,7 @@
 ﻿using FileHelpers;
 using System;
 
-namespace TransactionsProcessor.CFN.Application.Features
+namespace TransactionsProcessor.CFN.Application.Features.Parse
 {
     public partial class Parse
     {

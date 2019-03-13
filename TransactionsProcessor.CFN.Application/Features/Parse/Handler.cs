@@ -7,11 +7,10 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using TransactionsProcessor.CFN.Application.Models;
-using static TransactionsProcessor.CFN.Application.Features.Parse;
 
-namespace TransactionsProcessor.CFN.Application.Features
+namespace TransactionsProcessor.CFN.Application.Features.Parse
 {
-    public partial class ParseData
+    public partial class Parse
     {
         public class Command : IRequest<Result>
         {

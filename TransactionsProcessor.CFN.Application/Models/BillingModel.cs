@@ -33,16 +33,12 @@ namespace TransactionsProcessor.CFN.Application.Models
 
         public DeliveryTransPricing DeliveryTransPricingItem { get; set; }
 
-        //[IgnoreMe]
         public int SiteId { get; set; }
 
-        //[IgnoreMe]
         public string CardId { get; set; }
 
-        //[IgnoreMe]
         public string NameOnCard { get; set; }
 
-        //[IgnoreMe]
         public string TransactionType { get; set; }
     }
 

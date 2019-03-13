@@ -4,40 +4,34 @@ using System.Threading;
 using System.Threading.Tasks;
 using TransactionsProcessor.CFN.Application.Models;
 
-namespace TransactionsProcessor.CFN.Application.Features
+namespace TransactionsProcessor.CFN.Application.Features.Commit
 {
-    public class Commit
+    public partial class Commit
     {
         public class Command : IRequest<Result>
         {
-            public Dictionary<int, ParseModel> CfnFileDictionary { get; set; }
-
-            public Dictionary<int, BillingModel> BillingDictionary { get; set; }
+            public List<ParseModel> ParseTransactions { get; set; }
         }
 
         public class Result
         {
-            public Dictionary<int, ParseModel> BillingDictionary { get; set; }
+            public List<ParseModel> ParseModel { get; set; }
+
+            public List<BatchDetails> BatchDetailsList { get; set; }
 
             public List<int> TransactionIdsForRollback { get; set; }
         }
 
         public class Handler : IRequestHandler<Command, Result>
         {
-            public async Task<Result> Handle(Command request, CancellationToken cancellationToken)
+            public Task<Result> Handle(Command request, CancellationToken cancellationToken)
             {
-                var billingResponse = await BillingRequest(request);
+                var billingResponse = BillingRequest(request);
 
-                var insertedTransactionsInCaseOfRollback = ReconcileInsertedTransactions(request.CfnFileDictionary, billingResponse.DeliveryIdDictionary);
-
-                return new Result
-                {
-                    BillingDictionary = request.CfnFileDictionary,
-                    TransactionIdsForRollback = insertedTransactionsInCaseOfRollback
-                };
+                return Task.FromResult(new Result());
             }
 
-            private async Task<BillingResponse> BillingRequest(Command command)
+            private BillingResponse BillingRequest(Command command)
             {
                 return new BillingResponse();
             }
@@ -62,20 +56,5 @@ namespace TransactionsProcessor.CFN.Application.Features
                 return fallbackForInsertedTransactions;
             }
         }
-
-    }
-
-    public class BillingResponse
-    {
-        public Dictionary<int, int> DeliveryIdDictionary { get; set; }
-
-        public List<BatchDetails> BatchDetailsList { get; set; }
-    }
-
-    public class BatchDetails
-    {
-        public int BatchNumber { get; set; }
-
-        public int BatchCompanyId { get; set; }
     }
 }
