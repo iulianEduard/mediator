@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using TransactionsProcessor.CFN.Application.Helpers;
+using TransactionsProcessor.CFN.Application.Core.Extensions;
 using TransactionsProcessor.CFN.Application.Models;
 
 namespace TransactionsProcessor.CFN.Application.Features.Transform.Steps

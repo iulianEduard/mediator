@@ -1,4 +1,5 @@
 ﻿using MediatR;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Threading;
@@ -16,6 +17,8 @@ namespace TransactionsProcessor.CFN.Application.Features.Export
             public string ContentType { get; set; }
 
             public List<ParseModel> ParseModel { get; set; }
+
+            public Guid ProcessId { get; set; }
         }
 
         public class Result

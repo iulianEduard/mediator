@@ -6,7 +6,7 @@ using System.Net.Http;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using TransactionsProcessor.ApplicationFiles;
+using TransactionsProcessor.CFN.Application.Core;
 
 namespace TransactionsProcessor.CFN.Application.Features.Rollback
 {
@@ -28,18 +28,18 @@ namespace TransactionsProcessor.CFN.Application.Features.Rollback
 
         public class Handler : IRequestHandler<Command, Result>
         {
-            private readonly IChangeProcessedStatusChanger _processedStatusChanger;
+            private readonly ICfnDatabase _database;
             private readonly IHttpClientFactory _httpClient;
 
-            public Handler(IChangeProcessedStatusChanger processedStatusChanger, IHttpClientFactory httpClient)
+            public Handler(ICfnDatabase database, IHttpClientFactory httpClient)
             {
-                _processedStatusChanger = processedStatusChanger;
+                _database = database;
                 _httpClient = httpClient;
             }
 
             public async Task<Result> Handle(Command request, CancellationToken cancellationToken)
             {
-                await _processedStatusChanger.ChangeProcessedStatusToFail(request.FileId, request.Message);
+                await _database.QuerySingle<int>("", new { request.FileId, request.Message });
 
                 await RollbackBilingTransactions(request);
 

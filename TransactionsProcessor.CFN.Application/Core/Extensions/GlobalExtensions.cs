@@ -1,9 +1,9 @@
 ﻿using System;
 using System.Globalization;
 
-namespace TransactionsProcessor.CFN.Application.Helpers
+namespace TransactionsProcessor.CFN.Application.Core.Extensions
 {
-    public static class Extensions
+    public static class GlobalExtensions
     {
         public static DateTime ToDateTime(this int yyMMdd)
         {

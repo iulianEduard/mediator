@@ -1,16 +1,16 @@
 ﻿using MediatR;
-using System.Collections.Generic;
-using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using TransactionsProcessor.CFN.Application.Core.Extensions;
 using TransactionsProcessor.CFN.Application.Features;
 using TransactionsProcessor.CFN.Application.Features.Commit;
 using TransactionsProcessor.CFN.Application.Features.Export;
 using TransactionsProcessor.CFN.Application.Features.Finalize;
 using TransactionsProcessor.CFN.Application.Features.Parse;
+using TransactionsProcessor.CFN.Application.Features.Rollback;
+using TransactionsProcessor.CFN.Application.Features.SelectFiles;
 using TransactionsProcessor.CFN.Application.Features.SendToQC;
 using TransactionsProcessor.CFN.Application.Features.Transform;
-using TransactionsProcessor.CFN.Application.Features.Rollback;
 using TransactionsProcessor.CFN.Application.Models;
 
 namespace TransactionsProcessor.CFN.Application
@@ -83,7 +83,8 @@ namespace TransactionsProcessor.CFN.Application
             var exportResult = await _mediator.Send(new Export.Command
             {
                 ContentType = "CFN",
-                ParseModel = commitResult.ParseModel
+                ParseModel = commitResult.ParseModel,
+                ProcessId = fileStatus.ProcessId
             }, cancellationToken);
 
             var rawResult = await _mediator.Send(new Finalize.Command
@@ -94,7 +95,6 @@ namespace TransactionsProcessor.CFN.Application
             {
                 ProcessId = fileStatus.ProcessId
             }, cancellationToken);
-
         }
 
         private async Task Rollback(FileStatus fileStatus, CancellationToken cancellationToken)
@@ -103,35 +103,6 @@ namespace TransactionsProcessor.CFN.Application
             {
 
             }, cancellationToken);
-        }
-    }
-
-    public static class ApplicationExtensions
-    {
-        public static Response ToResponse(this SelectFiles.Result filesToBeProcessedResult)
-        {
-            var response = new Response
-            {
-                FileStatuses = new List<FileStatus>(),
-                IsProcessFail = false
-            };
-
-            foreach (var fileToBeProcessed in filesToBeProcessedResult.FilesToBeProcessed)
-            {
-                response.FileStatuses.Add(new FileStatus
-                {
-                    FileName = fileToBeProcessed.FileName
-                });
-            }
-
-            return response;
-        }
-
-        public static void ToUpdateResponse(this DownloadFiles.Result downloadFileResult, FileStatus fileStatus)
-        {
-            fileStatus.FileId = downloadFileResult.FileId;
-            fileStatus.FileName = downloadFileResult.FileName;
-            fileStatus.ProcessId = downloadFileResult.ProcessId;
         }
     }
 }

@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using TransactionsProcessor.CFN.Application.Helpers;
+using TransactionsProcessor.CFN.Application.Core.Extensions;
 using TransactionsProcessor.CFN.Application.Models;
 
 namespace TransactionsProcessor.CFN.Application.Features.Export
@@ -38,7 +38,7 @@ namespace TransactionsProcessor.CFN.Application.Features.Export
     {
         public static decimal ToTaxes(this ParseModel parseModel)
         {
-            return Extensions.DecimalSum(parseModel.SiteTaxAmount1, parseModel.SiteTaxAmount2, parseModel.SiteTaxAmount3,
+            return GlobalExtensions.DecimalSum(parseModel.SiteTaxAmount1, parseModel.SiteTaxAmount2, parseModel.SiteTaxAmount3,
                         parseModel.SiteTaxAmount4, parseModel.SiteTaxAmount5, parseModel.SiteTaxAmount6,
                         parseModel.SiteTaxAmount7, parseModel.SiteTaxAmount8, parseModel.SiteTaxAmount9, parseModel.SiteTaxAmount10);
         }
