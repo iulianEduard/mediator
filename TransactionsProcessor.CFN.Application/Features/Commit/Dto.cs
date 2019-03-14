@@ -8,7 +8,7 @@ namespace TransactionsProcessor.CFN.Application.Features.Commit
     {
         public class BillingResponse
         {
-            public Dictionary<int, int> DeliveryIdDictionary { get; set; }
+            public Dictionary<Guid, int> DeliveryIdDictionary { get; set; }
 
             public List<BatchDetails> BatchDetailsList { get; set; }
         }

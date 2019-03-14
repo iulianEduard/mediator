@@ -1,16 +1,14 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 using TransactionsProcessor.CFN.Application.Helpers;
 using TransactionsProcessor.CFN.Application.Models;
-using static TransactionsProcessor.CFN.Application.Features.Export.Export;
 
 namespace TransactionsProcessor.CFN.Application.Features.Export
 {
     public static class Mapper
     {
-        public static IEnumerable<ExportModel> Map(IEnumerable<ParseModel> records, IEnumerable<Export.Customer> customerCards)
+        public static IEnumerable<Export.ExportModel> Map(IEnumerable<ParseModel> records, IEnumerable<Export.Customer> customerCards)
         {
             string GetNameOnCard(string cardId)
             {
@@ -18,7 +16,7 @@ namespace TransactionsProcessor.CFN.Application.Features.Export
                 return string.IsNullOrWhiteSpace(nameOnCard) ? "Not found" : nameOnCard;
             }
 
-            return records.Select(item => new ExportModel
+            return records.Select(item => new Export.ExportModel
             {
                 Ticket = item.TransactionNumber,
                 TotalGallons = item.Quantity,
@@ -28,13 +26,21 @@ namespace TransactionsProcessor.CFN.Application.Features.Export
                 CustomerName = GetNameOnCard(item.CardId.ToString()),
                 UnitCost = item.PumpPrice,
                 Margin = item.HaulRate,
-                Taxes = Extensions.DecimalSum(item.SiteTaxAmount1, item.SiteTaxAmount2, item.SiteTaxAmount3,
-                        item.SiteTaxAmount4, item.SiteTaxAmount5, item.SiteTaxAmount6,
-                        item.SiteTaxAmount7, item.SiteTaxAmount8, item.SiteTaxAmount9, item.SiteTaxAmount10),
+                Taxes = item.ToTaxes(),
                 TotalPPG = item.CFNPrice,
                 TicketPrice = item.TotalAmount,
                 FileDate = DateTime.Now.ToString()
             });
+        }
+    }
+
+    public static class MapperExtensions
+    {
+        public static decimal ToTaxes(this ParseModel parseModel)
+        {
+            return Extensions.DecimalSum(parseModel.SiteTaxAmount1, parseModel.SiteTaxAmount2, parseModel.SiteTaxAmount3,
+                        parseModel.SiteTaxAmount4, parseModel.SiteTaxAmount5, parseModel.SiteTaxAmount6,
+                        parseModel.SiteTaxAmount7, parseModel.SiteTaxAmount8, parseModel.SiteTaxAmount9, parseModel.SiteTaxAmount10);
         }
     }
 }

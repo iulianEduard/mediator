@@ -1,6 +1,7 @@
 ﻿using MediatR;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -31,18 +32,18 @@ namespace TransactionsProcessor.CFN.Application.Features
 
         public class Handler : IRequestHandler<Command, Result>
         {
-            private readonly ICfnDatabase _cfnDatabase;
-            private readonly IApplicationFilesService _applicationFilesService;
+            private readonly ICfnDatabase _database;
+            private readonly IImportedFileChecker _fileChecker;
 
-            public Handler(ICfnDatabase cfnDatabase, IApplicationFilesService applicationFilesService)
+            public Handler(ICfnDatabase database, IImportedFileChecker fileChecker)
             {
-                _cfnDatabase = cfnDatabase;
-                _applicationFilesService = applicationFilesService;
+                _database = database;
+                _fileChecker = fileChecker;
             }
 
             public async Task<Result> Handle(Command request, CancellationToken cancellationToken)
             {
-                var ftpCredentials = await _cfnDatabase.QuerySingle<Credentials>("", new { request.ContentType });
+                var ftpCredentials = await _database.QuerySingle<Credentials>("", new { request.ContentType });
 
                 var remoteFileChecker = RemoteFileCheckerFactory.GetByName(ftpCredentials.TransferProtocol);
 
@@ -63,12 +64,13 @@ namespace TransactionsProcessor.CFN.Application.Features
 
                 var filesToBeProcessed = new Result();
 
-                // TODO: send list of files to check instead of one by one
-                foreach(var remoteFile in remoteFiles)
+                var fileCheckResult = await _fileChecker.Check(remoteFiles.Select(rf => rf.FileName).ToList());
+
+                foreach(var fileCheck in fileCheckResult)
                 {
-                    if(!await _applicationFilesService.CheckIfFileExists(remoteFile.FileName))
+                    if (fileCheck.Imported)
                     {
-                        filesToBeProcessed.FilesToBeProcessed.Add(new ResultDetail { FileName = remoteFile.FileName });
+                        filesToBeProcessed.FilesToBeProcessed.Add(new ResultDetail { FileName = fileCheck.File });
                     }
                 }
 

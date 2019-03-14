@@ -228,17 +228,6 @@ namespace TransactionsProcessor.CFN.Application.Features.Parse
             [FieldQuoted('"', QuoteMode.OptionalForBoth)]
             [FieldOptional]
             public string CustomPromptValue3 { get; set; }
-
-            [FieldOptional]
-            public string NameOnCard { get; set; }
-
-            [FieldOptional]
-            [FieldNullValue(0)]
-            public int DeliveryId { get; set; }
-
-            [FieldOptional]
-            [FieldNullValue(null)]
-            public Guid TransactionUID { get; set; }
         }
     }
 }

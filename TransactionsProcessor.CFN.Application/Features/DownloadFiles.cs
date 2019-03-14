@@ -1,4 +1,5 @@
 ﻿using MediatR;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
@@ -20,23 +21,27 @@ namespace TransactionsProcessor.CFN.Application.Features
 
         public class Result
         {
-            public Dictionary<int, string> DownloadedFiles { get; set; }
+            public int FileId { get; set; }
+
+            public string FileName { get; set; }
+
+            public Guid ProcessId { get; set; }
         }
 
         public class Handler : IRequestHandler<Command, Result>
         {
             private readonly ICfnDatabase _database;
-            private readonly IApplicationFilesService _applicationFilesService;
+            private readonly IFileAdder _fileAdder;
 
-            public Handler(ICfnDatabase database, IApplicationFilesService applicationFilesService)
+            public Handler(ICfnDatabase database, IFileAdder fileAdder)
             {
                 _database = database;
-                _applicationFilesService = applicationFilesService;
+                _fileAdder = fileAdder;
             }
 
             public async Task<Result> Handle(Command request, CancellationToken cancellationToken)
             {
-                var downloadLocation = await _database.QuerySingle<string>("", new { request.ContentType }); 
+                var downloadLocation = await _database.QuerySingle<string>("", new { request.ContentType });
                 var ftpCredentials = await _database.QuerySingle<DownloadSettings>("", new { request.ContentType });
 
                 var downloadRequest = new DownloadRequest
@@ -55,18 +60,14 @@ namespace TransactionsProcessor.CFN.Application.Features
 
                 var downloader = DownloaderFactory.GetByName(ftpCredentials.TransferProtocol);
                 var downloadResponse = await downloader.DownloadFilesAsync(downloadRequest);
+                var downloadedFile = downloadResponse.Details.FirstOrDefault();
 
                 var result = new Result
                 {
-                    DownloadedFiles = new Dictionary<int, string>()
+                    ProcessId = Guid.NewGuid(),
+                    FileId = await _fileAdder.AddFile(downloadedFile.FileName, "CFN"),
+                    FileName = downloadedFile.FileName
                 };
-
-                foreach(var file in downloadResponse.Details)
-                {
-                    var applicationFilesId = await _applicationFilesService.Insert(file.FileName, "CFN");
-
-                    result.DownloadedFiles.Add(applicationFilesId, file.FileName);
-                }
 
                 return result;
             }

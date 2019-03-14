@@ -8,9 +8,9 @@ namespace TransactionsProcessor.Api.Controllers
     [Route("api/cfn")]
     public class CFNController : Controller
     {
-        private readonly Application _application;
+        private readonly AutomatedImport _application;
 
-        public CFNController(Application application)
+        public CFNController(AutomatedImport application)
         {
             _application = application;
         }

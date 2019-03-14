@@ -62,10 +62,9 @@ namespace TransactionsProcessor.CFN.Application.Features.Parse
                 var config = new MapperConfiguration(cfg =>
                 {
                     cfg.CreateMap<Template, ParseModel>()
-                        .ForMember(
-                            dest => dest.TransactionUID,
-                            opts => opts.MapFrom(src => Guid.NewGuid())
-                        );
+                        .ForMember(dest => dest.TransactionUID, opts => opts.MapFrom(src => Guid.NewGuid()))
+                        .ForMember(dest => dest.DeliveryId, opts => opts.Ignore())
+                        .ForMember(dest => dest.NameOnCard, opts => opts.Ignore());
                 });
 
                 return config.CreateMapper();
