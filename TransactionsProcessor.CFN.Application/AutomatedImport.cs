@@ -101,7 +101,8 @@ namespace TransactionsProcessor.CFN.Application
         {
             var rollbackResult = await _mediator.Send(new Rollback.Command
             {
-
+                FileId = fileStatus.FileId,
+                ProcessId = fileStatus.ProcessId
             }, cancellationToken);
         }
     }

@@ -1,6 +1,6 @@
 ﻿using MediatR;
 using Newtonsoft.Json;
-using System.Collections.Generic;
+using System;
 using System.Net;
 using System.Net.Http;
 using System.Text;
@@ -20,7 +20,7 @@ namespace TransactionsProcessor.CFN.Application.Features.Rollback
 
             public bool TransactionsAreCommited { get; set; }
 
-            public List<int> RollbackTransactionsId { get; set; }
+            public Guid ProcessId { get; set; }
         }
 
         public class Result
@@ -51,7 +51,7 @@ namespace TransactionsProcessor.CFN.Application.Features.Rollback
                 if(command.TransactionsAreCommited)
                 {
                     var httpClient = _httpClient.CreateClient("Billing");
-                    var jsonRequest = JsonConvert.SerializeObject(command.RollbackTransactionsId);
+                    var jsonRequest = JsonConvert.SerializeObject(command.ProcessId);
                     var httpContent = new StringContent(jsonRequest, Encoding.UTF8, "application/json");
 
                     var httpResponse = await httpClient.PostAsync("deliverytrans/cfn/rollback", httpContent);
